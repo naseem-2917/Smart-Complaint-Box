@@ -1,0 +1,7 @@
+name = "complaintbox"
+main = "index.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+# Add your Gemini API key in Cloudflare Dashboard > Workers > Settings > Variables
+# GEMINI_API_KEY = "your-api-key-here"
