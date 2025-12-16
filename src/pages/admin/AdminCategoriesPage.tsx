@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Plus, Edit2, Power, Loader2, X, Check, Trash2 } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
-import { getCategories, addCategory, updateCategory, toggleCategory, removeDuplicateCategories, type Category } from '../../services/categories';
+import { getCategories, addCategory, updateCategory, toggleCategory, removeDuplicateCategories, ensureOtherCategory, type Category } from '../../services/categories';
 import { useNotification } from '../../context/NotificationContext';
 
 const AdminCategoriesPage: React.FC = () => {
@@ -22,6 +22,8 @@ const AdminCategoriesPage: React.FC = () => {
 
     const loadCategories = async () => {
         try {
+            // Ensure Other category exists
+            await ensureOtherCategory();
             const data = await getCategories();
             setCategories(data);
         } catch (error) {

@@ -58,11 +58,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isAdmin = false }) => {
 
     const handleLogout = async () => {
         await logout();
+        sessionStorage.removeItem('adminAuthenticated');
         navigate('/dashboard');
     };
 
     return (
-        <aside className="hidden md:flex flex-col w-64 min-h-screen max-h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 sticky top-0">
+        <aside className="hidden md:flex flex-col w-64 h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 fixed left-0 top-0 z-40">
             {/* Logo */}
             <div className="p-6 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
                 <div className="flex items-center gap-3">
@@ -88,22 +89,22 @@ const Sidebar: React.FC<SidebarProps> = ({ isAdmin = false }) => {
                         to={item.to}
                         end={item.to === '/admin' || item.to === '/dashboard'}
                         className={({ isActive }) => `
-              flex items-center gap-3 px-4 py-3 rounded-xl
-              transition-all duration-200
-              ${isActive
+                            flex items-center gap-3 px-4 py-3 rounded-xl
+                            transition-all duration-200
+                            ${isActive
                                 ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium'
                                 : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
                             }
-            `}
+                        `}
                     >
                         {({ isActive }) => (
                             <>
-                                <item.icon className="w-5 h-5" />
+                                <item.icon className={`w-5 h-5 ${isActive ? 'text-blue-600 dark:text-blue-400' : ''}`} />
                                 <span>{item.label}</span>
                                 {isActive && (
                                     <motion.div
-                                        layoutId="sidebarIndicator"
-                                        className="absolute left-0 w-1 h-8 bg-blue-600 rounded-r-full"
+                                        layoutId="activeNav"
+                                        className="absolute right-0 w-1 h-8 bg-blue-600 rounded-l-full"
                                     />
                                 )}
                             </>

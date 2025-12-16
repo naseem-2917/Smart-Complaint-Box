@@ -7,6 +7,7 @@ import {
     deleteDoc,
     query,
     orderBy,
+    where,
     serverTimestamp,
     Timestamp
 } from 'firebase/firestore';
@@ -155,3 +156,24 @@ export const removeDuplicateCategories = async (): Promise<number> => {
     return deletedCount;
 };
 
+// Ensure Other category exists (call this on app startup or categories page load)
+export const ensureOtherCategory = async (): Promise<void> => {
+    const q = query(
+        collection(db, CATEGORIES_COLLECTION),
+        where('name', '==', 'Other')
+    );
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+        // Add Other category
+        await addDoc(collection(db, CATEGORIES_COLLECTION), {
+            name: 'Other',
+            description: 'Other issues not in above categories',
+            icon: '❓',
+            enabled: true,
+            complaintCount: 0,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+        });
+    }
+};
