@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 import { createComplaint } from '../../services/complaints';
 import { liveAnalyze } from '../../services/ai';
+import { compressImage } from '../../utils/imageCompressor';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Textarea from '../../components/common/Textarea';
@@ -82,12 +83,27 @@ const SubmitComplaintPage: React.FC = () => {
         setLoading(true);
 
         try {
+            // Compress image if provided, otherwise use empty string
+            let imageBase64: string = '';
+
+            if (image) {
+                try {
+                    imageBase64 = await compressImage(image);
+                    console.log('Image compressed successfully');
+                } catch (compressionError) {
+                    console.error('Image compression failed:', compressionError);
+                    showError('Image Error', 'Failed to process image. Please try a different one.');
+                    setLoading(false);
+                    return;
+                }
+            }
+
             await createComplaint(
                 firebaseUser.uid,
                 userData.displayName || 'User',
                 userData.email || '',
                 description,
-                image,
+                imageBase64 || undefined,  // Pass Base64 string (or undefined if empty)
                 isAnonymous
             );
 

@@ -12,8 +12,7 @@ import {
     Timestamp,
     onSnapshot
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from './firebase';
+import { db } from './firebase';
 import type { Complaint, ComplaintStatus, TimelineEvent, AdminNote } from '../types';
 import { analyzeComplaint } from './ai';
 
@@ -25,20 +24,11 @@ export const createComplaint = async (
     userName: string,
     userEmail: string,
     description: string,
-    imageFile?: File | null,
+    imageBase64?: string,  // Base64 encoded image string (compressed)
     isAnonymous: boolean = false
 ): Promise<string> => {
-    let imageUrl: string | undefined;
-
-    // Upload image if provided
-    if (imageFile) {
-        const imageRef = ref(storage, `complaints/${userId}/${Date.now()}_${imageFile.name}`);
-        await uploadBytes(imageRef, imageFile);
-        imageUrl = await getDownloadURL(imageRef);
-    }
-
-    // Get AI analysis
-    const aiAnalysis = await analyzeComplaint(description, imageUrl);
+    // Get AI analysis (pass the Base64 image if provided)
+    const aiAnalysis = await analyzeComplaint(description, imageBase64 || undefined);
 
     // Create initial timeline
     const timeline: Omit<TimelineEvent, 'id'>[] = [
@@ -65,7 +55,7 @@ export const createComplaint = async (
         userName: isAnonymous ? 'Anonymous' : userName,
         userEmail: isAnonymous ? 'hidden' : userEmail,
         description,
-        imageUrl: imageUrl || null,
+        imageUrl: imageBase64 || null,  // Stored as Base64 string
         isAnonymous,
 
         // AI Analysis

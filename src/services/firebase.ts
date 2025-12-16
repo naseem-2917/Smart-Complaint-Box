@@ -5,13 +5,12 @@ import { getStorage } from 'firebase/storage';
 import { getAnalytics } from 'firebase/analytics';
 
 const firebaseConfig = {
-    apiKey: "AIzaSyBrGHSUlHBO8LYtGWuwuqyF3z07Xc5vXY4",
-    authDomain: "smart-complaint-box-c29f9.firebaseapp.com",
-    projectId: "smart-complaint-box-c29f9",
-    storageBucket: "smart-complaint-box-c29f9.firebasestorage.app",
-    messagingSenderId: "936731618092",
-    appId: "1:936731618092:web:4fc22bca8dc94b761b9a89",
-measurementId: "G-1QHHYXC9FV"
+    apiKey: "AIzaSyDcT2pW5WvbA0AnjrPc4ChMedNreq7zBws",
+    authDomain: "smart-complaint-box-2025.firebaseapp.com",
+    projectId: "smart-complaint-box-2025",
+    storageBucket: "smart-complaint-box-2025.firebasestorage.app",
+    messagingSenderId: "235301646086",
+    appId: "1:235301646086:web:e7ea2ce28825c846633887"
 };
 
 // Initialize Firebase
