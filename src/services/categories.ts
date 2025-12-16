@@ -33,10 +33,11 @@ const defaultCategories = [
     { name: 'Sanitation', description: 'Cleanliness and waste management', icon: '🧹', enabled: true },
     { name: 'Security', description: 'Safety and security concerns', icon: '🔒', enabled: true },
     { name: 'Classroom', description: 'Academic facility issues', icon: '📚', enabled: true },
-    { name: 'General', description: 'Other general complaints', icon: '📋', enabled: true }
+    { name: 'General', description: 'General complaints', icon: '📋', enabled: true },
+    { name: 'Other', description: 'Other issues not in above categories', icon: '❓', enabled: true }
 ];
 
-// Get all categories
+// Get all categories with actual complaint counts
 export const getCategories = async (): Promise<Category[]> => {
     const q = query(
         collection(db, CATEGORIES_COLLECTION),
@@ -51,9 +52,21 @@ export const getCategories = async (): Promise<Category[]> => {
         return getCategories();
     }
 
+    // Get all complaints to count per category
+    const complaintsSnapshot = await getDocs(collection(db, 'complaints'));
+    const categoryCounts: Record<string, number> = {};
+
+    complaintsSnapshot.docs.forEach(doc => {
+        const category = doc.data().category;
+        if (category) {
+            categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+        }
+    });
+
     return snapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
+        complaintCount: categoryCounts[doc.data().name] || 0  // Use actual count
     } as Category));
 };
 
@@ -121,3 +134,24 @@ export const incrementCategoryCount = async (categoryName: string): Promise<void
         });
     }
 };
+
+// Remove duplicate categories (keeps the first one of each name)
+export const removeDuplicateCategories = async (): Promise<number> => {
+    const snapshot = await getDocs(collection(db, CATEGORIES_COLLECTION));
+    const seen = new Set<string>();
+    let deletedCount = 0;
+
+    for (const docSnap of snapshot.docs) {
+        const name = docSnap.data().name;
+        if (seen.has(name)) {
+            // Delete duplicate
+            await deleteDoc(doc(db, CATEGORIES_COLLECTION, docSnap.id));
+            deletedCount++;
+        } else {
+            seen.add(name);
+        }
+    }
+
+    return deletedCount;
+};
+

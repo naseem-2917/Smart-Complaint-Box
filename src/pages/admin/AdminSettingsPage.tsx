@@ -1,20 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Settings, Bell, Brain, Shield, Save } from 'lucide-react';
+import { Settings, Bell, Shield, Save, Check } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
+import { useNotification } from '../../context/NotificationContext';
 
 const AdminSettingsPage: React.FC = () => {
     const [settings, setSettings] = useState({
         autoAssign: true,
-        emailNotifications: true,
-        priorityThreshold: 70,
-        aiSensitivity: 'medium',
+        emailNotifications: false,
         autoEscalate: 48
     });
+    const [saved, setSaved] = useState(false);
+    const { showSuccess } = useNotification();
+
+    useEffect(() => {
+        // Load settings from localStorage
+        const savedSettings = localStorage.getItem('adminSettings');
+        if (savedSettings) {
+            setSettings(JSON.parse(savedSettings));
+        }
+    }, []);
+
+    const handleSave = () => {
+        localStorage.setItem('adminSettings', JSON.stringify(settings));
+        showSuccess('Success', 'Settings saved successfully');
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+    };
 
     return (
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-2xl mx-auto px-4">
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -28,50 +44,6 @@ const AdminSettingsPage: React.FC = () => {
                         Configure system behavior and preferences
                     </p>
                 </div>
-
-                {/* AI Settings */}
-                <Card className="mb-4">
-                    <div className="flex items-center gap-3 mb-4">
-                        <Brain className="w-5 h-5 text-primary-500" />
-                        <h2 className="font-semibold text-gray-900 dark:text-white">AI Configuration</h2>
-                    </div>
-
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">
-                                Priority Threshold (AI will mark as High Priority above this score)
-                            </label>
-                            <input
-                                type="range"
-                                min="50"
-                                max="90"
-                                value={settings.priorityThreshold}
-                                onChange={(e) => setSettings({ ...settings, priorityThreshold: parseInt(e.target.value) })}
-                                className="w-full"
-                            />
-                            <div className="flex justify-between text-sm text-gray-500 mt-1">
-                                <span>50</span>
-                                <span className="font-medium text-primary-500">{settings.priorityThreshold}</span>
-                                <span>90</span>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">
-                                AI Sensitivity Level
-                            </label>
-                            <select
-                                value={settings.aiSensitivity}
-                                onChange={(e) => setSettings({ ...settings, aiSensitivity: e.target.value })}
-                                className="w-full px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 border-0 focus:ring-2 focus:ring-primary-500"
-                            >
-                                <option value="low">Low - Less strict categorization</option>
-                                <option value="medium">Medium - Balanced</option>
-                                <option value="high">High - Strict categorization</option>
-                            </select>
-                        </div>
-                    </div>
-                </Card>
 
                 {/* Notification Settings */}
                 <Card className="mb-4">
@@ -131,13 +103,25 @@ const AdminSettingsPage: React.FC = () => {
                                 <option value="72">72 hours</option>
                                 <option value="0">Disabled</option>
                             </select>
+                            <p className="text-xs text-gray-400 mt-1">
+                                Complaints not addressed in this time will be escalated automatically
+                            </p>
                         </div>
                     </div>
                 </Card>
 
-                <Button fullWidth icon={<Save className="w-5 h-5" />}>
-                    Save Settings
+                <Button
+                    fullWidth
+                    onClick={handleSave}
+                    icon={saved ? <Check className="w-5 h-5" /> : <Save className="w-5 h-5" />}
+                >
+                    {saved ? 'Saved!' : 'Save Settings'}
                 </Button>
+
+                {/* Info */}
+                <p className="text-center text-sm text-gray-400 mt-4">
+                    Settings are saved locally in your browser
+                </p>
             </motion.div>
         </div>
     );

@@ -1,16 +1,16 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, X, Upload, Loader2, Sparkles, Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { X, Upload, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
-import { createComplaint } from '../../services/complaints';
-import { liveAnalyze } from '../../services/ai';
+import { createComplaintManual } from '../../services/complaints';
 import { compressImage } from '../../utils/imageCompressor';
+import { getCategories, type Category } from '../../services/categories';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Textarea from '../../components/common/Textarea';
-import type { LiveAnalysisResponse, UrgencyLevel } from '../../types';
+import type { UrgencyLevel } from '../../types';
 
 const SubmitComplaintPage: React.FC = () => {
     const [description, setDescription] = useState('');
@@ -18,52 +18,28 @@ const SubmitComplaintPage: React.FC = () => {
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [isAnonymous, setIsAnonymous] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [aiAnalysis, setAiAnalysis] = useState<LiveAnalysisResponse | null>(null);
-    const [analyzing, setAnalyzing] = useState(false);
-    const [userUrgency, setUserUrgency] = useState<UrgencyLevel | ''>('');
+    const [selectedCategory, setSelectedCategory] = useState('');
+    const [selectedPriority, setSelectedPriority] = useState<UrgencyLevel>('Medium');
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [loadingCategories, setLoadingCategories] = useState(true);
 
     const { firebaseUser, userData } = useAuth();
     const { showSuccess, showError } = useNotification();
     const navigate = useNavigate();
 
-    // Keywords-based urgency detection (backup for AI)
-    const detectUrgencyFromKeywords = (text: string): UrgencyLevel | null => {
-        const lowerText = text.toLowerCase();
-        const criticalWords = ['fire', 'aag', 'emergency', 'urgent', 'danger', 'death', 'flood', 'paani bhar', 'bijli ka shock', 'gas leak', 'accident'];
-        const highWords = ['leak', 'broken', 'not working', 'kharab', 'blocked', 'overflow', 'smell', 'badbu', 'health', 'safety'];
-
-        if (criticalWords.some(w => lowerText.includes(w))) return 'Critical';
-        if (highWords.some(w => lowerText.includes(w))) return 'High';
-        return null;
-    };
-
-    // Debounced AI analysis (wait 2.5 seconds after user stops typing)
+    // Load categories from Firestore
     useEffect(() => {
-        if (description.length < 10) {
-            setAiAnalysis(null);
-            return;
-        }
-
-        const timer = setTimeout(async () => {
-            setAnalyzing(true);
+        const loadCategories = async () => {
             try {
-                const analysis = await liveAnalyze(description);
-
-                // Apply keywords-based detection if AI gives generic result
-                const keywordUrgency = detectUrgencyFromKeywords(description);
-                if (keywordUrgency && (analysis.priority === 'Medium' || analysis.priority === 'Low')) {
-                    analysis.priority = keywordUrgency;
-                }
-
-                setAiAnalysis(analysis);
+                const cats = await getCategories();
+                setCategories(cats.filter(c => c.enabled)); // Only enabled categories
             } catch (error) {
-                console.error('Live analysis error:', error);
+                console.error('Failed to load categories:', error);
             }
-            setAnalyzing(false);
-        }, 2500); // Increased from 500ms to 2500ms
-
-        return () => clearTimeout(timer);
-    }, [description]);
+            setLoadingCategories(false);
+        };
+        loadCategories();
+    }, []);
 
     const handleImageChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -99,16 +75,20 @@ const SubmitComplaintPage: React.FC = () => {
             return;
         }
 
+        if (!selectedCategory) {
+            showError('Category required', 'Please select a category for your complaint.');
+            return;
+        }
+
         setLoading(true);
 
         try {
-            // Compress image if provided, otherwise use empty string
+            // Compress image if provided
             let imageBase64: string = '';
 
             if (image) {
                 try {
                     imageBase64 = await compressImage(image);
-                    console.log('Image compressed successfully');
                 } catch (compressionError) {
                     console.error('Image compression failed:', compressionError);
                     showError('Image Error', 'Failed to process image. Please try a different one.');
@@ -117,17 +97,18 @@ const SubmitComplaintPage: React.FC = () => {
                 }
             }
 
-            await createComplaint(
+            await createComplaintManual(
                 firebaseUser.uid,
                 userData.displayName || 'User',
                 userData.email || '',
                 description,
+                selectedCategory,
+                selectedPriority,
                 imageBase64 || undefined,
-                isAnonymous,
-                userUrgency || undefined  // Pass user-selected urgency
+                isAnonymous
             );
 
-            showSuccess('Complaint submitted!', 'AI has analyzed your complaint and assigned priority.');
+            showSuccess('Complaint submitted!', 'Your complaint has been registered successfully.');
             navigate('/history');
         } catch (error: any) {
             showError('Submission failed', error.message || 'Please try again.');
@@ -147,15 +128,93 @@ const SubmitComplaintPage: React.FC = () => {
                         Raise a Complaint
                     </h1>
                     <p className="text-gray-600 dark:text-gray-400 mt-1">
-                        Describe your issue and let AI help categorize it
+                        Describe your issue and select category
                     </p>
                 </div>
 
                 <form onSubmit={handleSubmit}>
+                    {/* Category Selection */}
+                    <Card className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                            📁 Select Category <span className="text-red-500">*</span>
+                        </label>
+                        {loadingCategories ? (
+                            <div className="flex items-center justify-center gap-2 text-gray-500 py-4">
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                <span>Loading categories...</span>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                {categories.map((cat) => (
+                                    <button
+                                        key={cat.id}
+                                        type="button"
+                                        onClick={() => setSelectedCategory(cat.name)}
+                                        className={`p-3 rounded-xl border-2 transition-all text-left ${selectedCategory === cat.name
+                                                ? 'bg-primary-100 dark:bg-primary-900/30 border-primary-500 ring-2 ring-primary-500'
+                                                : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-primary-300'
+                                            }`}
+                                    >
+                                        <span className="text-xl">{cat.icon || '📋'}</span>
+                                        <p className={`text-sm font-medium mt-1 ${selectedCategory === cat.name
+                                                ? 'text-primary-700 dark:text-primary-300'
+                                                : 'text-gray-700 dark:text-gray-300'
+                                            }`}>
+                                            {cat.name}
+                                        </p>
+                                    </button>
+                                ))}
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedCategory('Other')}
+                                    className={`p-3 rounded-xl border-2 transition-all text-left ${selectedCategory === 'Other'
+                                            ? 'bg-primary-100 dark:bg-primary-900/30 border-primary-500 ring-2 ring-primary-500'
+                                            : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-primary-300'
+                                        }`}
+                                >
+                                    <span className="text-xl">❓</span>
+                                    <p className={`text-sm font-medium mt-1 ${selectedCategory === 'Other'
+                                            ? 'text-primary-700 dark:text-primary-300'
+                                            : 'text-gray-700 dark:text-gray-300'
+                                        }`}>
+                                        Other
+                                    </p>
+                                </button>
+                            </div>
+                        )}
+                    </Card>
+
+                    {/* Priority Selection */}
+                    <Card className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            🎯 Select Priority <span className="text-red-500">*</span>
+                        </label>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            {[
+                                { value: 'Low', label: '🟢 Low', color: 'bg-emerald-100 dark:bg-emerald-900/30 border-emerald-300 dark:border-emerald-700' },
+                                { value: 'Medium', label: '🟡 Medium', color: 'bg-amber-100 dark:bg-amber-900/30 border-amber-300 dark:border-amber-700' },
+                                { value: 'High', label: '🟠 High', color: 'bg-orange-100 dark:bg-orange-900/30 border-orange-300 dark:border-orange-700' },
+                                { value: 'Critical', label: '🔴 Critical', color: 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-700' }
+                            ].map((priority) => (
+                                <button
+                                    key={priority.value}
+                                    type="button"
+                                    onClick={() => setSelectedPriority(priority.value as UrgencyLevel)}
+                                    className={`p-3 rounded-xl border-2 transition-all font-medium text-sm ${selectedPriority === priority.value
+                                        ? `${priority.color} ring-2 ring-primary-500`
+                                        : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+                                        }`}
+                                >
+                                    {priority.label}
+                                </button>
+                            ))}
+                        </div>
+                    </Card>
+
                     {/* Description */}
                     <Card className="mb-4">
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            📝 Describe Your Issue
+                            📝 Describe Your Issue <span className="text-red-500">*</span>
                         </label>
                         <Textarea
                             placeholder="Tell us what's wrong... (e.g., 'Paani 2 din se nahi aa raha...')"
@@ -165,80 +224,6 @@ const SubmitComplaintPage: React.FC = () => {
                             className="text-base"
                             required
                         />
-
-                        {/* Live AI Analysis */}
-                        <AnimatePresence>
-                            {(aiAnalysis || analyzing) && (
-                                <motion.div
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: 'auto' }}
-                                    exit={{ opacity: 0, height: 0 }}
-                                    className="mt-4 p-4 rounded-xl bg-gradient-to-r from-primary-50 to-blue-50 dark:from-primary-900/20 dark:to-blue-900/20 border border-primary-100 dark:border-primary-800"
-                                >
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <Sparkles className="w-4 h-4 text-primary-500" />
-                                        <span className="text-sm font-medium text-primary-700 dark:text-primary-300">
-                                            AI Auto-Detection
-                                        </span>
-                                        {analyzing && <Loader2 className="w-4 h-4 animate-spin text-primary-500" />}
-                                    </div>
-
-                                    {aiAnalysis && (
-                                        <div className="space-y-2">
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-sm text-gray-600 dark:text-gray-400">📁 Category:</span>
-                                                <span className="px-2 py-1 rounded-lg bg-white dark:bg-gray-800 text-sm font-medium">
-                                                    {aiAnalysis.category}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-sm text-gray-600 dark:text-gray-400">🔥 Priority:</span>
-                                                <span className={`px-2 py-1 rounded-lg text-sm font-medium ${aiAnalysis.priority === 'High' || aiAnalysis.priority === 'Critical'
-                                                    ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                                                    : aiAnalysis.priority === 'Medium'
-                                                        ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
-                                                        : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
-                                                    }`}>
-                                                    {aiAnalysis.priority}
-                                                </span>
-                                            </div>
-                                            {aiAnalysis.suggestedImage && (
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-sm text-gray-600 dark:text-gray-400">💡 Tip:</span>
-                                                    <span className="text-sm text-gray-700 dark:text-gray-300">
-                                                        {aiAnalysis.suggestedImage}
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </Card>
-
-                    {/* User Priority Override */}
-                    <Card className="mb-4">
-                        <div className="flex items-center gap-2 mb-3">
-                            <AlertTriangle className="w-4 h-4 text-amber-500" />
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                🎯 Override Priority (Optional)
-                            </label>
-                        </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                            If AI detection is wrong, you can set priority manually
-                        </p>
-                        <select
-                            value={userUrgency}
-                            onChange={(e) => setUserUrgency(e.target.value as UrgencyLevel | '')}
-                            className="w-full px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-0 focus:ring-2 focus:ring-primary-500"
-                        >
-                            <option value="">Use AI Detection</option>
-                            <option value="Low">🟢 Low - Minor issue</option>
-                            <option value="Medium">🟡 Medium - Needs attention</option>
-                            <option value="High">🟠 High - Urgent</option>
-                            <option value="Critical">🔴 Critical - Emergency</option>
-                        </select>
                     </Card>
 
                     {/* Image Upload */}
@@ -248,42 +233,41 @@ const SubmitComplaintPage: React.FC = () => {
                         </label>
 
                         <div className="text-xs text-gray-500 dark:text-gray-400 mb-3 space-y-1">
-                            <p>• Take a clear photo</p>
-                            <p>• Ensure location is visible</p>
-                            <p>• Good lighting helps AI</p>
+                            <p>• Max file size: 5MB</p>
+                            <p>• Image will be compressed automatically</p>
                         </div>
 
-                        {imagePreview ? (
-                            <div className="relative rounded-xl overflow-hidden">
+                        {!imagePreview ? (
+                            <label className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl cursor-pointer hover:border-primary-500 transition-colors">
+                                <div className="flex flex-col items-center gap-2">
+                                    <div className="p-3 rounded-full bg-primary-50 dark:bg-primary-900/20">
+                                        <Upload className="w-6 h-6 text-primary-500" />
+                                    </div>
+                                    <span className="text-sm text-gray-500">Click to upload or drag</span>
+                                    <span className="text-xs text-gray-400">PNG, JPG up to 5MB</span>
+                                </div>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleImageChange}
+                                    className="hidden"
+                                />
+                            </label>
+                        ) : (
+                            <div className="relative">
                                 <img
                                     src={imagePreview}
                                     alt="Preview"
-                                    className="w-full h-48 object-cover"
+                                    className="w-full h-48 object-cover rounded-xl"
                                 />
                                 <button
                                     type="button"
                                     onClick={removeImage}
-                                    className="absolute top-2 right-2 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+                                    className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600"
                                 >
                                     <X className="w-4 h-4" />
                                 </button>
                             </div>
-                        ) : (
-                            <label className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl cursor-pointer hover:border-primary-500 hover:bg-primary-50/50 dark:hover:bg-primary-900/10 transition-colors">
-                                <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                                <span className="text-sm text-gray-500 dark:text-gray-400">
-                                    Click to upload or drag & drop
-                                </span>
-                                <span className="text-xs text-gray-400 mt-1">
-                                    PNG, JPG up to 5MB
-                                </span>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={handleImageChange}
-                                />
-                            </label>
                         )}
                     </Card>
 
@@ -292,9 +276,9 @@ const SubmitComplaintPage: React.FC = () => {
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 {isAnonymous ? (
-                                    <EyeOff className="w-5 h-5 text-gray-500" />
+                                    <EyeOff className="w-5 h-5 text-primary-500" />
                                 ) : (
-                                    <Eye className="w-5 h-5 text-gray-500" />
+                                    <Eye className="w-5 h-5 text-gray-400" />
                                 )}
                                 <div>
                                     <p className="font-medium text-gray-900 dark:text-white">
@@ -323,11 +307,10 @@ const SubmitComplaintPage: React.FC = () => {
                     <Button
                         type="submit"
                         fullWidth
-                        size="lg"
                         loading={loading}
-                        icon={<Camera className="w-5 h-5" />}
+                        disabled={loading || !selectedCategory || description.trim().length < 10}
                     >
-                        Submit Complaint
+                        {loading ? 'Submitting...' : 'Submit Complaint'}
                     </Button>
                 </form>
             </motion.div>

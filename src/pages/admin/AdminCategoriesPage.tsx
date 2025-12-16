@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Edit2, Power, Loader2, X, Check } from 'lucide-react';
+import { Plus, Edit2, Power, Loader2, X, Check, Trash2 } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
-import { getCategories, addCategory, updateCategory, toggleCategory, type Category } from '../../services/categories';
+import { getCategories, addCategory, updateCategory, toggleCategory, removeDuplicateCategories, type Category } from '../../services/categories';
 import { useNotification } from '../../context/NotificationContext';
 
 const AdminCategoriesPage: React.FC = () => {
@@ -13,6 +13,7 @@ const AdminCategoriesPage: React.FC = () => {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [newName, setNewName] = useState('');
     const [newDescription, setNewDescription] = useState('');
+    const [removingDuplicates, setRemovingDuplicates] = useState(false);
     const { showSuccess, showError } = useNotification();
 
     useEffect(() => {
@@ -66,6 +67,22 @@ const AdminCategoriesPage: React.FC = () => {
         }
     };
 
+    const handleRemoveDuplicates = async () => {
+        setRemovingDuplicates(true);
+        try {
+            const count = await removeDuplicateCategories();
+            if (count > 0) {
+                showSuccess('Success', `Removed ${count} duplicate categories`);
+                loadCategories();
+            } else {
+                showSuccess('No Duplicates', 'No duplicate categories found');
+            }
+        } catch (error) {
+            showError('Error', 'Failed to remove duplicates');
+        }
+        setRemovingDuplicates(false);
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[50vh]">
@@ -75,12 +92,12 @@ const AdminCategoriesPage: React.FC = () => {
     }
 
     return (
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto px-4">
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
             >
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                             Categories
@@ -89,9 +106,19 @@ const AdminCategoriesPage: React.FC = () => {
                             Manage complaint categories ({categories.length} total)
                         </p>
                     </div>
-                    <Button onClick={() => setShowAddModal(true)} icon={<Plus className="w-5 h-5" />}>
-                        Add Category
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button
+                            variant="secondary"
+                            onClick={handleRemoveDuplicates}
+                            loading={removingDuplicates}
+                            icon={<Trash2 className="w-4 h-4" />}
+                        >
+                            Remove Duplicates
+                        </Button>
+                        <Button onClick={() => setShowAddModal(true)} icon={<Plus className="w-5 h-5" />}>
+                            Add Category
+                        </Button>
+                    </div>
                 </div>
 
                 <Card>

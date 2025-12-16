@@ -80,7 +80,7 @@ const ComplaintHistoryPage: React.FC = () => {
     }
 
     return (
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto px-4">
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -97,21 +97,21 @@ const ComplaintHistoryPage: React.FC = () => {
 
                 {/* Stats Summary */}
                 <Card className="mb-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Total Complaints</p>
                             <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
                         </div>
-                        <div className="flex gap-4 text-center">
-                            <div>
+                        <div className="flex gap-4 sm:gap-6 text-center overflow-x-auto pb-2 sm:pb-0">
+                            <div className="flex-shrink-0">
                                 <p className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">{stats.resolved}</p>
                                 <p className="text-xs text-gray-500">Resolved</p>
                             </div>
-                            <div>
+                            <div className="flex-shrink-0">
                                 <p className="text-lg font-semibold text-blue-600 dark:text-blue-400">{stats.inProgress}</p>
                                 <p className="text-xs text-gray-500">In Progress</p>
                             </div>
-                            <div>
+                            <div className="flex-shrink-0">
                                 <p className="text-lg font-semibold text-amber-600 dark:text-amber-400">{stats.pending}</p>
                                 <p className="text-xs text-gray-500">Pending</p>
                             </div>

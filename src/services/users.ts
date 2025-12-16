@@ -25,18 +25,32 @@ export interface UserData {
 }
 
 const USERS_COLLECTION = 'users';
+const COMPLAINTS_COLLECTION = 'complaints';
 
-// Get all users (admin only)
+// Get all users with actual complaint count from complaints collection
 export const getAllUsers = async (): Promise<UserData[]> => {
-    const q = query(
+    // Get all users
+    const usersQuery = query(
         collection(db, USERS_COLLECTION),
         orderBy('createdAt', 'desc')
     );
+    const usersSnapshot = await getDocs(usersQuery);
 
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
+    // Get all complaints to count per user
+    const complaintsSnapshot = await getDocs(collection(db, COMPLAINTS_COLLECTION));
+    const complaintCounts: Record<string, number> = {};
+
+    complaintsSnapshot.docs.forEach(doc => {
+        const userId = doc.data().userId;
+        if (userId) {
+            complaintCounts[userId] = (complaintCounts[userId] || 0) + 1;
+        }
+    });
+
+    return usersSnapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
+        complaintCount: complaintCounts[doc.id] || 0  // Use actual count
     } as UserData));
 };
 

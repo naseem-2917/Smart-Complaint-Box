@@ -99,6 +99,69 @@ export const createComplaint = async (
     return docRef.id;
 };
 
+// Create complaint with manual category and priority selection (no AI)
+export const createComplaintManual = async (
+    userId: string,
+    userName: string,
+    userEmail: string,
+    description: string,
+    category: string,
+    urgency: UrgencyLevel,
+    imageBase64?: string,
+    isAnonymous: boolean = false
+): Promise<string> => {
+    // Calculate priority score based on urgency
+    const urgencyScores: Record<UrgencyLevel, number> = {
+        'Low': 25,
+        'Medium': 50,
+        'High': 75,
+        'Critical': 95
+    };
+    const priorityScore = urgencyScores[urgency];
+
+    // Create initial timeline
+    const timeline: Omit<TimelineEvent, 'id'>[] = [
+        {
+            action: 'Complaint Submitted',
+            timestamp: Timestamp.now(),
+            actor: isAnonymous ? 'Anonymous User' : userName,
+            actorType: 'user',
+            details: `Category: ${category}, Priority: ${urgency}`,
+            icon: '📝'
+        }
+    ];
+
+    const complaintData = {
+        userId,
+        userName: isAnonymous ? 'Anonymous' : userName,
+        userEmail: isAnonymous ? 'hidden' : userEmail,
+        description,
+        imageUrl: imageBase64 || null,
+        isAnonymous,
+
+        // Manual selection
+        category,
+        urgency,
+        priorityScore,
+        priorityReason: ['User selected priority'],
+        aiSummary: description.slice(0, 100) + '...',
+        suggestedAssignment: 'General Support',
+        statusExplanation: 'Your complaint has been received and is pending review.',
+        detectedObjects: [],
+
+        // Status
+        status: 'Pending' as ComplaintStatus,
+        timeline: timeline.map((t, i) => ({ ...t, id: `tl_${i}` })),
+
+        // Timestamps
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+    };
+
+    const docRef = await addDoc(collection(db, COMPLAINTS_COLLECTION), complaintData);
+    return docRef.id;
+};
+
 // Get user's complaints
 export const getUserComplaints = async (userId: string): Promise<Complaint[]> => {
     const q = query(

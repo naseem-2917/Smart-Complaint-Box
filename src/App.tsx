@@ -132,6 +132,7 @@ const AppRoutes: React.FC = () => {
         <Route path="notifications" element={<AdminNotificationsPage />} />
         <Route path="settings" element={<AdminSettingsPage />} />
         <Route path="profile" element={<ProfilePage />} />
+        <Route path="history" element={<ComplaintHistoryPage />} />
       </Route>
 
       {/* Fallback */}

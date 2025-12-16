@@ -62,9 +62,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isAdmin = false }) => {
     };
 
     return (
-        <aside className="hidden md:flex flex-col w-64 h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 sticky top-0">
+        <aside className="hidden md:flex flex-col w-64 min-h-screen max-h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 sticky top-0">
             {/* Logo */}
-            <div className="p-6 border-b border-gray-200 dark:border-gray-800">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
                         <MessageSquare className="w-5 h-5 text-white" />
@@ -80,8 +80,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isAdmin = false }) => {
                 </div>
             </div>
 
-            {/* Navigation */}
-            <nav className="flex-1 p-4 space-y-1">
+            {/* Navigation - Scrollable */}
+            <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
                 {navItems.map((item) => (
                     <NavLink
                         key={item.to}
@@ -113,7 +113,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isAdmin = false }) => {
             </nav>
 
             {/* User section / Guest prompt */}
-            <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+            <div className="p-4 border-t border-gray-200 dark:border-gray-800 flex-shrink-0">
                 {isGuest ? (
                     <div className="text-center">
                         <p className="text-sm text-gray-500 dark:text-gray-400">
