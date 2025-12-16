@@ -1,6 +1,6 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Mail, LogOut, Shield, User } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Mail, LogOut, Shield, User, ArrowRightLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
@@ -8,12 +8,20 @@ import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 
 const ProfilePage: React.FC = () => {
-    const { userData, isAdmin, logout } = useAuth();
+    const { userData, isAdmin: authIsAdmin, logout } = useAuth();
     const { showSuccess } = useNotification();
     const navigate = useNavigate();
+    const location = useLocation();
+
+    const isOnAdminPanel = location.pathname.startsWith('/admin');
+
+    // Check if user is admin either from auth context OR from session (passed admin password)
+    const sessionAdmin = sessionStorage.getItem('adminAuthenticated') === 'true';
+    const isAdmin = authIsAdmin || sessionAdmin;
 
     const handleLogout = async () => {
         await logout();
+        sessionStorage.removeItem('adminAuthenticated'); // Clear admin session
         showSuccess('Logged out', 'You have been logged out successfully.');
         navigate('/login');
     };
@@ -101,6 +109,19 @@ const ProfilePage: React.FC = () => {
                         </div>
                     </div>
                 </Card>
+
+                {/* Admin Panel Toggle - Only for Admins */}
+                {isAdmin && (
+                    <Button
+                        variant="secondary"
+                        fullWidth
+                        className="mb-4"
+                        icon={<ArrowRightLeft className="w-5 h-5" />}
+                        onClick={() => navigate(isOnAdminPanel ? '/dashboard' : '/admin')}
+                    >
+                        {isOnAdminPanel ? 'Switch to User Panel' : 'Switch to Admin Panel'}
+                    </Button>
+                )}
 
                 {/* Logout */}
                 <Button

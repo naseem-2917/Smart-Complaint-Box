@@ -1,12 +1,14 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { Home, PlusCircle, ClipboardList, User, LogIn } from 'lucide-react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { Home, PlusCircle, ClipboardList, User, LogIn, BarChart3, Brain } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 
 const BottomNav: React.FC = () => {
     const { firebaseUser } = useAuth();
+    const location = useLocation();
     const isGuest = !firebaseUser;
+    const isAdminRoute = location.pathname.startsWith('/admin');
 
     const userNavItems = [
         { to: '/dashboard', icon: Home, label: 'Home' },
@@ -20,7 +22,15 @@ const BottomNav: React.FC = () => {
         { to: '/login', icon: LogIn, label: 'Sign In' }
     ];
 
-    const navItems = isGuest ? guestNavItems : userNavItems;
+    const adminNavItems = [
+        { to: '/admin', icon: Home, label: 'Home' },
+        { to: '/admin/complaints', icon: ClipboardList, label: 'Tasks' },
+        { to: '/admin/insights', icon: Brain, label: 'AI' },
+        { to: '/admin/analytics', icon: BarChart3, label: 'Stats' },
+        { to: '/admin/profile', icon: User, label: 'Profile' }
+    ];
+
+    const navItems = isAdminRoute ? adminNavItems : (isGuest ? guestNavItems : userNavItems);
 
     return (
         <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden">
@@ -30,6 +40,7 @@ const BottomNav: React.FC = () => {
                         <NavLink
                             key={item.to}
                             to={item.to}
+                            end={item.to === '/admin' || item.to === '/dashboard'}
                             className={({ isActive }) => `
                 flex flex-col items-center gap-1 py-2 px-4 rounded-xl
                 transition-all duration-200
@@ -65,3 +76,4 @@ const BottomNav: React.FC = () => {
 };
 
 export default BottomNav;
+

@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Filter, Loader2, TrendingUp } from 'lucide-react';
+import { Filter, Loader2, TrendingUp, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { subscribeToUserComplaints, getUserStats } from '../../services/complaints';
+import { subscribeToUserComplaints } from '../../services/complaints';
 import type { Complaint, ComplaintStatus } from '../../types';
 import Card from '../../components/common/Card';
 import StatusBadge from '../../components/common/StatusBadge';
@@ -12,18 +12,39 @@ const ComplaintHistoryPage: React.FC = () => {
     const { firebaseUser } = useAuth();
     const [complaints, setComplaints] = useState<Complaint[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [filter, setFilter] = useState<ComplaintStatus | 'All'>('All');
     const [stats, setStats] = useState({ total: 0, pending: 0, inProgress: 0, resolved: 0, escalated: 0 });
 
     useEffect(() => {
-        if (!firebaseUser) return;
-
-        const unsubscribe = subscribeToUserComplaints(firebaseUser.uid, (data) => {
-            setComplaints(data);
+        if (!firebaseUser) {
             setLoading(false);
-        });
+            return;
+        }
 
-        getUserStats(firebaseUser.uid).then(setStats);
+        setLoading(true);
+        setError(null);
+
+        const unsubscribe = subscribeToUserComplaints(
+            firebaseUser.uid,
+            (data) => {
+                setComplaints(data);
+                // Calculate stats directly from subscription data
+                setStats({
+                    total: data.length,
+                    pending: data.filter(c => c.status === 'Pending').length,
+                    inProgress: data.filter(c => c.status === 'In Progress').length,
+                    resolved: data.filter(c => c.status === 'Resolved').length,
+                    escalated: data.filter(c => c.status === 'Escalated').length
+                });
+                setLoading(false);
+            },
+            (err) => {
+                console.error('Failed to load complaints:', err);
+                setError('Failed to load complaints. Please try again.');
+                setLoading(false);
+            }
+        );
 
         return () => unsubscribe();
     }, [firebaseUser]);
@@ -38,6 +59,22 @@ const ComplaintHistoryPage: React.FC = () => {
         return (
             <div className="flex items-center justify-center min-h-[50vh]">
                 <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
+                <AlertTriangle className="w-12 h-12 text-amber-500" />
+                <p className="text-gray-600 dark:text-gray-400">{error}</p>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-colors"
+                >
+                    <RefreshCw className="w-4 h-4" />
+                    Retry
+                </button>
             </div>
         );
     }

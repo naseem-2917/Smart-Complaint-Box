@@ -6,7 +6,12 @@ import {
     BarChart3,
     User,
     LogOut,
-    MessageSquare
+    MessageSquare,
+    Tags,
+    Users,
+    Brain,
+    Settings,
+    Bell
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
@@ -39,9 +44,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isAdmin = false }) => {
 
     const adminNavItems = [
         { to: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
-        { to: '/admin/complaints', icon: ClipboardList, label: 'All Complaints' },
-        { to: '/admin/analytics', icon: BarChart3, label: 'Analytics' },
-        { to: '/profile', icon: User, label: 'Profile' }
+        { to: '/admin/complaints', icon: ClipboardList, label: 'Complaints' },
+        { to: '/admin/categories', icon: Tags, label: 'Categories' },
+        { to: '/admin/users', icon: Users, label: 'Users' },
+        { to: '/admin/insights', icon: Brain, label: 'AI Insights' },
+        { to: '/admin/analytics', icon: BarChart3, label: 'Reports' },
+        { to: '/admin/notifications', icon: Bell, label: 'Notifications' },
+        { to: '/admin/settings', icon: Settings, label: 'Settings' },
+        { to: '/admin/profile', icon: User, label: 'Profile' }
     ];
 
     const navItems = isAdmin ? adminNavItems : (isGuest ? guestNavItems : userNavItems);

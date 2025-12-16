@@ -13,7 +13,7 @@ import {
     onSnapshot
 } from 'firebase/firestore';
 import { db } from './firebase';
-import type { Complaint, ComplaintStatus, TimelineEvent, AdminNote } from '../types';
+import type { Complaint, ComplaintStatus, TimelineEvent, AdminNote, UrgencyLevel } from '../types';
 import { analyzeComplaint } from './ai';
 
 const COMPLAINTS_COLLECTION = 'complaints';
@@ -25,10 +25,26 @@ export const createComplaint = async (
     userEmail: string,
     description: string,
     imageBase64?: string,  // Base64 encoded image string (compressed)
-    isAnonymous: boolean = false
+    isAnonymous: boolean = false,
+    userUrgency?: UrgencyLevel  // User can override AI urgency
 ): Promise<string> => {
     // Get AI analysis (pass the Base64 image if provided)
     const aiAnalysis = await analyzeComplaint(description, imageBase64 || undefined);
+
+    // Use user-provided urgency if available, otherwise use AI analysis
+    const finalUrgency = userUrgency || aiAnalysis.urgency;
+
+    // Adjust priority score if user overrides urgency
+    let finalPriorityScore = aiAnalysis.priorityScore;
+    if (userUrgency) {
+        const urgencyScores: Record<UrgencyLevel, number> = {
+            'Low': 25,
+            'Medium': 50,
+            'High': 75,
+            'Critical': 95
+        };
+        finalPriorityScore = urgencyScores[userUrgency];
+    }
 
     // Create initial timeline
     const timeline: Omit<TimelineEvent, 'id'>[] = [
@@ -45,7 +61,7 @@ export const createComplaint = async (
             timestamp: Timestamp.now(),
             actor: 'AI System',
             actorType: 'ai',
-            details: `Category: ${aiAnalysis.category}, Priority: ${aiAnalysis.urgency}`,
+            details: `Category: ${aiAnalysis.category}, Priority: ${finalUrgency}${userUrgency ? ' (User Override)' : ''}`,
             icon: '🤖'
         }
     ];
@@ -58,11 +74,13 @@ export const createComplaint = async (
         imageUrl: imageBase64 || null,  // Stored as Base64 string
         isAnonymous,
 
-        // AI Analysis
+        // AI Analysis (with possible user override)
         category: aiAnalysis.category,
-        urgency: aiAnalysis.urgency,
-        priorityScore: aiAnalysis.priorityScore,
-        priorityReason: aiAnalysis.priorityReason,
+        urgency: finalUrgency,
+        priorityScore: finalPriorityScore,
+        priorityReason: userUrgency
+            ? [...aiAnalysis.priorityReason, 'User manually set priority']
+            : aiAnalysis.priorityReason,
         aiSummary: aiAnalysis.aiSummary,
         suggestedAssignment: aiAnalysis.suggestedAssignment,
         statusExplanation: aiAnalysis.statusExplanation,
@@ -100,15 +118,18 @@ export const getUserComplaints = async (userId: string): Promise<Complaint[]> =>
 export const getAllComplaints = async (): Promise<Complaint[]> => {
     const q = query(
         collection(db, COMPLAINTS_COLLECTION),
-        orderBy('priorityScore', 'desc'),
         orderBy('createdAt', 'desc')
     );
 
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
+    const complaints = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
     } as Complaint));
+
+    // Sort by priority score on client side to avoid needing composite index
+    complaints.sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0));
+    return complaints;
 };
 
 // Get single complaint
@@ -233,7 +254,8 @@ export const addUserFeedback = async (
 // Subscribe to user's complaints (real-time)
 export const subscribeToUserComplaints = (
     userId: string,
-    callback: (complaints: Complaint[]) => void
+    callback: (complaints: Complaint[]) => void,
+    onError?: (error: Error) => void
 ): (() => void) => {
     const q = query(
         collection(db, COMPLAINTS_COLLECTION),
@@ -241,33 +263,48 @@ export const subscribeToUserComplaints = (
         orderBy('createdAt', 'desc')
     );
 
-    return onSnapshot(q, (snapshot) => {
-        const complaints = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        } as Complaint));
-        callback(complaints);
-    });
+    return onSnapshot(
+        q,
+        (snapshot) => {
+            const complaints = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            } as Complaint));
+            callback(complaints);
+        },
+        (error) => {
+            console.error('User complaints subscription error:', error);
+            onError?.(error);
+        }
+    );
 };
 
 // Subscribe to all complaints (admin, real-time)
 export const subscribeToAllComplaints = (
-    callback: (complaints: Complaint[]) => void
+    callback: (complaints: Complaint[]) => void,
+    onError?: (error: Error) => void
 ): (() => void) => {
     const q = query(
         collection(db, COMPLAINTS_COLLECTION),
         orderBy('createdAt', 'desc')
     );
 
-    return onSnapshot(q, (snapshot) => {
-        const complaints = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        } as Complaint));
-        // Sort by priority score on client side
-        complaints.sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0));
-        callback(complaints);
-    });
+    return onSnapshot(
+        q,
+        (snapshot) => {
+            const complaints = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            } as Complaint));
+            // Sort by priority score on client side
+            complaints.sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0));
+            callback(complaints);
+        },
+        (error) => {
+            console.error('All complaints subscription error:', error);
+            onError?.(error);
+        }
+    );
 };
 
 // Get complaints stats for user

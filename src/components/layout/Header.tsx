@@ -42,9 +42,9 @@ const Header: React.FC<HeaderProps> = ({ title = 'Smart Complaint Box' }) => {
                 <div className="flex items-center gap-2">
                     {/* Notifications - only show for logged in users */}
                     {!isGuest && (
-                        <button className="p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                        <Link to="/history" className="p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                             <Bell className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                        </button>
+                        </Link>
                     )}
 
                     {/* Theme toggle */}

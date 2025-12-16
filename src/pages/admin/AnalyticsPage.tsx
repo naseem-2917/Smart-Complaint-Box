@@ -11,14 +11,21 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'
 const AnalyticsPage: React.FC = () => {
     const [complaints, setComplaints] = useState<Complaint[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         loadData();
     }, []);
 
     const loadData = async () => {
-        const data = await getAllComplaints();
-        setComplaints(data);
+        try {
+            const data = await getAllComplaints();
+            setComplaints(data);
+            setError(null);
+        } catch (err) {
+            console.error('Failed to load analytics:', err);
+            setError('Failed to load data. Please check Firestore indexes.');
+        }
         setLoading(false);
     };
 
@@ -95,6 +102,20 @@ const AnalyticsPage: React.FC = () => {
         return (
             <div className="flex items-center justify-center min-h-[50vh]">
                 <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
+                <p className="text-gray-600 dark:text-gray-400">{error}</p>
+                <button
+                    onClick={() => { setLoading(true); loadData(); }}
+                    className="px-4 py-2 bg-primary-500 text-white rounded-xl hover:bg-primary-600"
+                >
+                    Retry
+                </button>
             </div>
         );
     }

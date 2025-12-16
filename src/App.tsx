@@ -24,6 +24,11 @@ import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import ComplaintManagementPage from './pages/admin/ComplaintManagementPage';
 import AdminComplaintDetailPage from './pages/admin/AdminComplaintDetailPage';
 import AnalyticsPage from './pages/admin/AnalyticsPage';
+import AdminCategoriesPage from './pages/admin/AdminCategoriesPage';
+import AdminUsersPage from './pages/admin/AdminUsersPage';
+import AdminAIInsightsPage from './pages/admin/AdminAIInsightsPage';
+import AdminNotificationsPage from './pages/admin/AdminNotificationsPage';
+import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import AdminLoginRequired from './pages/AdminLoginRequired';
 
 // Auth Required Route - only for pages that need login
@@ -120,7 +125,13 @@ const AppRoutes: React.FC = () => {
         <Route index element={<AdminDashboardPage />} />
         <Route path="complaints" element={<ComplaintManagementPage />} />
         <Route path="complaint/:id" element={<AdminComplaintDetailPage />} />
+        <Route path="categories" element={<AdminCategoriesPage />} />
+        <Route path="users" element={<AdminUsersPage />} />
+        <Route path="insights" element={<AdminAIInsightsPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
+        <Route path="notifications" element={<AdminNotificationsPage />} />
+        <Route path="settings" element={<AdminSettingsPage />} />
+        <Route path="profile" element={<ProfilePage />} />
       </Route>
 
       {/* Fallback */}

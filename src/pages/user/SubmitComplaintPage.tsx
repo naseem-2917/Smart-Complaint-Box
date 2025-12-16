@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, X, Upload, Loader2, Sparkles, Eye, EyeOff } from 'lucide-react';
+import { Camera, X, Upload, Loader2, Sparkles, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 import { createComplaint } from '../../services/complaints';
@@ -10,7 +10,7 @@ import { compressImage } from '../../utils/imageCompressor';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Textarea from '../../components/common/Textarea';
-import type { LiveAnalysisResponse } from '../../types';
+import type { LiveAnalysisResponse, UrgencyLevel } from '../../types';
 
 const SubmitComplaintPage: React.FC = () => {
     const [description, setDescription] = useState('');
@@ -20,12 +20,24 @@ const SubmitComplaintPage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [aiAnalysis, setAiAnalysis] = useState<LiveAnalysisResponse | null>(null);
     const [analyzing, setAnalyzing] = useState(false);
+    const [userUrgency, setUserUrgency] = useState<UrgencyLevel | ''>('');
 
     const { firebaseUser, userData } = useAuth();
     const { showSuccess, showError } = useNotification();
     const navigate = useNavigate();
 
-    // Debounced AI analysis
+    // Keywords-based urgency detection (backup for AI)
+    const detectUrgencyFromKeywords = (text: string): UrgencyLevel | null => {
+        const lowerText = text.toLowerCase();
+        const criticalWords = ['fire', 'aag', 'emergency', 'urgent', 'danger', 'death', 'flood', 'paani bhar', 'bijli ka shock', 'gas leak', 'accident'];
+        const highWords = ['leak', 'broken', 'not working', 'kharab', 'blocked', 'overflow', 'smell', 'badbu', 'health', 'safety'];
+
+        if (criticalWords.some(w => lowerText.includes(w))) return 'Critical';
+        if (highWords.some(w => lowerText.includes(w))) return 'High';
+        return null;
+    };
+
+    // Debounced AI analysis (wait 2.5 seconds after user stops typing)
     useEffect(() => {
         if (description.length < 10) {
             setAiAnalysis(null);
@@ -36,12 +48,19 @@ const SubmitComplaintPage: React.FC = () => {
             setAnalyzing(true);
             try {
                 const analysis = await liveAnalyze(description);
+
+                // Apply keywords-based detection if AI gives generic result
+                const keywordUrgency = detectUrgencyFromKeywords(description);
+                if (keywordUrgency && (analysis.priority === 'Medium' || analysis.priority === 'Low')) {
+                    analysis.priority = keywordUrgency;
+                }
+
                 setAiAnalysis(analysis);
             } catch (error) {
                 console.error('Live analysis error:', error);
             }
             setAnalyzing(false);
-        }, 500);
+        }, 2500); // Increased from 500ms to 2500ms
 
         return () => clearTimeout(timer);
     }, [description]);
@@ -103,8 +122,9 @@ const SubmitComplaintPage: React.FC = () => {
                 userData.displayName || 'User',
                 userData.email || '',
                 description,
-                imageBase64 || undefined,  // Pass Base64 string (or undefined if empty)
-                isAnonymous
+                imageBase64 || undefined,
+                isAnonymous,
+                userUrgency || undefined  // Pass user-selected urgency
             );
 
             showSuccess('Complaint submitted!', 'AI has analyzed your complaint and assigned priority.');
@@ -195,6 +215,30 @@ const SubmitComplaintPage: React.FC = () => {
                                 </motion.div>
                             )}
                         </AnimatePresence>
+                    </Card>
+
+                    {/* User Priority Override */}
+                    <Card className="mb-4">
+                        <div className="flex items-center gap-2 mb-3">
+                            <AlertTriangle className="w-4 h-4 text-amber-500" />
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                🎯 Override Priority (Optional)
+                            </label>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                            If AI detection is wrong, you can set priority manually
+                        </p>
+                        <select
+                            value={userUrgency}
+                            onChange={(e) => setUserUrgency(e.target.value as UrgencyLevel | '')}
+                            className="w-full px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-0 focus:ring-2 focus:ring-primary-500"
+                        >
+                            <option value="">Use AI Detection</option>
+                            <option value="Low">🟢 Low - Minor issue</option>
+                            <option value="Medium">🟡 Medium - Needs attention</option>
+                            <option value="High">🟠 High - Urgent</option>
+                            <option value="Critical">🔴 Critical - Emergency</option>
+                        </select>
                     </Card>
 
                     {/* Image Upload */}
