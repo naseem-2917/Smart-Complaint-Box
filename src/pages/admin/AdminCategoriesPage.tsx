@@ -1,18 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Edit2, Power, Loader2, X, Check, Trash2 } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import { getCategories, addCategory, updateCategory, toggleCategory, removeDuplicateCategories, ensureOtherCategory, type Category } from '../../services/categories';
 import { useNotification } from '../../context/NotificationContext';
 
+// Popular emoji icons for categories
+const CATEGORY_ICONS = [
+    '📋', '🔧', '💡', '🚰', '🛣️', '🗑️', '🛡️', '📚', '🏫', '🖥️',
+    '📶', '🔒', '🚪', '🪑', '📝', '🎓', '🏠', '🚗', '⚡', '🌡️',
+    '🧹', '🚿', '💧', '🔥', '❄️', '🪟', '🚽', '🍽️', '🛏️', '📦'
+];
+
 const AdminCategoriesPage: React.FC = () => {
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
-    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editingCategory, setEditingCategory] = useState<Category | null>(null);
     const [newName, setNewName] = useState('');
     const [newDescription, setNewDescription] = useState('');
+    const [newIcon, setNewIcon] = useState('📋');
     const [removingDuplicates, setRemovingDuplicates] = useState(false);
     const { showSuccess, showError } = useNotification();
 
@@ -22,7 +30,7 @@ const AdminCategoriesPage: React.FC = () => {
 
     const loadCategories = async () => {
         try {
-            // Ensure Other category exists
+            await removeDuplicateCategories();
             await ensureOtherCategory();
             const data = await getCategories();
             setCategories(data);
@@ -37,22 +45,32 @@ const AdminCategoriesPage: React.FC = () => {
         if (!newName.trim()) return;
 
         try {
-            await addCategory(newName.trim(), newDescription.trim());
+            await addCategory(newName.trim(), newDescription.trim(), newIcon);
             showSuccess('Success', 'Category added successfully');
             setShowAddModal(false);
             setNewName('');
             setNewDescription('');
+            setNewIcon('📋');
             loadCategories();
         } catch (error) {
             showError('Error', 'Failed to add category');
         }
     };
 
-    const handleUpdate = async (id: string, name: string) => {
+    const handleUpdate = async () => {
+        if (!editingCategory || !newName.trim()) return;
+
         try {
-            await updateCategory(id, { name });
+            await updateCategory(editingCategory.id, {
+                name: newName.trim(),
+                icon: newIcon,
+                description: newDescription.trim() || undefined
+            });
             showSuccess('Success', 'Category updated');
-            setEditingId(null);
+            setEditingCategory(null);
+            setNewName('');
+            setNewDescription('');
+            setNewIcon('📋');
             loadCategories();
         } catch (error) {
             showError('Error', 'Failed to update category');
@@ -67,6 +85,13 @@ const AdminCategoriesPage: React.FC = () => {
         } catch (error) {
             showError('Error', 'Failed to toggle category');
         }
+    };
+
+    const openEditModal = (category: Category) => {
+        setEditingCategory(category);
+        setNewName(category.name);
+        setNewDescription(category.description || '');
+        setNewIcon(category.icon || '📋');
     };
 
     const handleRemoveDuplicates = async () => {
@@ -85,6 +110,14 @@ const AdminCategoriesPage: React.FC = () => {
         setRemovingDuplicates(false);
     };
 
+    const closeModal = () => {
+        setShowAddModal(false);
+        setEditingCategory(null);
+        setNewName('');
+        setNewDescription('');
+        setNewIcon('📋');
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[50vh]">
@@ -95,10 +128,7 @@ const AdminCategoriesPage: React.FC = () => {
 
     return (
         <div className="max-w-4xl mx-auto px-4">
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-            >
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -128,68 +158,33 @@ const AdminCategoriesPage: React.FC = () => {
                         {categories.map((category) => (
                             <div key={category.id} className="flex items-center justify-between py-4 first:pt-0 last:pb-0">
                                 <div className="flex items-center gap-4">
-                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl ${category.enabled ? 'bg-primary-100 dark:bg-primary-900/30' : 'bg-gray-100 dark:bg-gray-700'}`}>
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${category.enabled ? 'bg-primary-100 dark:bg-primary-900/30' : 'bg-gray-100 dark:bg-gray-700'}`}>
                                         {category.icon || '📋'}
                                     </div>
                                     <div>
-                                        {editingId === category.id ? (
-                                            <input
-                                                type="text"
-                                                defaultValue={category.name}
-                                                className="px-2 py-1 border rounded-lg dark:bg-gray-800 dark:border-gray-600"
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter') {
-                                                        handleUpdate(category.id, (e.target as HTMLInputElement).value);
-                                                    }
-                                                    if (e.key === 'Escape') setEditingId(null);
-                                                }}
-                                                autoFocus
-                                            />
-                                        ) : (
-                                            <p className={`font-medium ${category.enabled ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
-                                                {category.name}
-                                            </p>
-                                        )}
+                                        <p className={`font-medium ${category.enabled ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
+                                            {category.name}
+                                        </p>
                                         <p className="text-sm text-gray-500 dark:text-gray-400">
                                             {category.complaintCount || 0} complaints
                                         </p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    {editingId === category.id ? (
-                                        <>
-                                            <button
-                                                onClick={() => {
-                                                    const input = document.querySelector(`input[defaultValue="${category.name}"]`) as HTMLInputElement;
-                                                    handleUpdate(category.id, input?.value || category.name);
-                                                }}
-                                                className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600"
-                                            >
-                                                <Check className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => setEditingId(null)}
-                                                className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-500"
-                                            >
-                                                <X className="w-4 h-4" />
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <button
-                                                onClick={() => setEditingId(category.id)}
-                                                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                                            >
-                                                <Edit2 className="w-4 h-4 text-gray-500" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleToggle(category.id, category.enabled)}
-                                                className={`p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${category.enabled ? 'text-emerald-500' : 'text-gray-400'}`}
-                                            >
-                                                <Power className="w-4 h-4" />
-                                            </button>
-                                        </>
-                                    )}
+                                    <button
+                                        onClick={() => openEditModal(category)}
+                                        className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                        title="Edit"
+                                    >
+                                        <Edit2 className="w-4 h-4 text-gray-500" />
+                                    </button>
+                                    <button
+                                        onClick={() => handleToggle(category.id, category.enabled)}
+                                        className={`p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${category.enabled ? 'text-emerald-500' : 'text-gray-400'}`}
+                                        title={category.enabled ? 'Disable' : 'Enable'}
+                                    >
+                                        <Power className="w-4 h-4" />
+                                    </button>
                                 </div>
                             </div>
                         ))}
@@ -201,40 +196,98 @@ const AdminCategoriesPage: React.FC = () => {
                 </p>
             </motion.div>
 
-            {/* Add Modal */}
-            {showAddModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md"
-                    >
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Add Category</h2>
-                        <input
-                            type="text"
-                            placeholder="Category name"
-                            value={newName}
-                            onChange={(e) => setNewName(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-700 border-0 mb-3"
-                        />
-                        <textarea
-                            placeholder="Description (optional)"
-                            value={newDescription}
-                            onChange={(e) => setNewDescription(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-700 border-0 mb-4 resize-none"
-                            rows={2}
-                        />
-                        <div className="flex gap-3">
-                            <Button variant="secondary" fullWidth onClick={() => setShowAddModal(false)}>
-                                Cancel
-                            </Button>
-                            <Button fullWidth onClick={handleAdd} disabled={!newName.trim()}>
-                                Add Category
-                            </Button>
-                        </div>
-                    </motion.div>
-                </div>
-            )}
+            {/* Add/Edit Modal */}
+            <AnimatePresence>
+                {(showAddModal || editingCategory) && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto"
+                        >
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                                    {editingCategory ? 'Edit Category' : 'Add Category'}
+                                </h2>
+                                <button onClick={closeModal} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                                    <X className="w-5 h-5 text-gray-500" />
+                                </button>
+                            </div>
+
+                            {/* Icon Picker */}
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Select Icon
+                                </label>
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="w-16 h-16 bg-primary-100 dark:bg-primary-900/30 rounded-xl flex items-center justify-center text-3xl">
+                                        {newIcon}
+                                    </div>
+                                    <span className="text-sm text-gray-500">Current icon</span>
+                                </div>
+                                <div className="grid grid-cols-6 gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-xl max-h-40 overflow-y-auto">
+                                    {CATEGORY_ICONS.map((icon) => (
+                                        <button
+                                            key={icon}
+                                            onClick={() => setNewIcon(icon)}
+                                            className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-colors ${newIcon === icon
+                                                    ? 'bg-primary-500 text-white ring-2 ring-primary-500 ring-offset-2'
+                                                    : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                                }`}
+                                        >
+                                            {icon}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Name Input */}
+                            <div className="mb-3">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    Category Name
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g., Water Supply"
+                                    value={newName}
+                                    onChange={(e) => setNewName(e.target.value)}
+                                    className="w-full px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-700 border-0 text-gray-900 dark:text-white"
+                                />
+                            </div>
+
+                            {/* Description Input */}
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    Description (optional)
+                                </label>
+                                <textarea
+                                    placeholder="Brief description of this category"
+                                    value={newDescription}
+                                    onChange={(e) => setNewDescription(e.target.value)}
+                                    className="w-full px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-700 border-0 resize-none text-gray-900 dark:text-white"
+                                    rows={2}
+                                />
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex gap-3">
+                                <Button variant="secondary" fullWidth onClick={closeModal}>
+                                    Cancel
+                                </Button>
+                                <Button
+                                    fullWidth
+                                    onClick={editingCategory ? handleUpdate : handleAdd}
+                                    disabled={!newName.trim()}
+                                    icon={<Check className="w-4 h-4" />}
+                                >
+                                    {editingCategory ? 'Save Changes' : 'Add Category'}
+                                </Button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

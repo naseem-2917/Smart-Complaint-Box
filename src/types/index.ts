@@ -139,6 +139,7 @@ export interface LiveAnalysisResponse {
     category: string;
     priority: UrgencyLevel;
     suggestedImage: string;
+    isValid: boolean; // true if text is a meaningful complaint, false if gibberish/random
 }
 
 // Form Types
@@ -155,4 +156,46 @@ export interface Toast {
     title: string;
     message?: string;
     duration?: number;
+}
+
+// Group Complaint (Petition) Types
+export interface GroupComplaintSupporter {
+    userId: string;
+    userName: string;
+    userEmail: string;
+    signedAt: Timestamp;
+}
+
+export interface GroupComplaint {
+    id: string;
+
+    // Creator Info
+    creatorId: string;
+    creatorName: string;
+    creatorEmail: string;
+
+    // Complaint Details  
+    title: string;
+    description: string;
+    category: string;
+    urgency: UrgencyLevel;
+    imageUrl?: string;
+
+    // AI Analysis
+    aiSummary?: string;
+    priorityScore?: number;
+
+    // Supporters
+    supporters: string[]; // Array of user IDs for efficient checking
+    supporterDetails: GroupComplaintSupporter[]; // Full supporter info
+    supporterCount: number;
+
+    // Status
+    status: ComplaintStatus;
+    isDhamaka: boolean; // true when supporterCount >= MIN_DHAMAKA_COUNT
+
+    // Timestamps
+    createdAt: Timestamp;
+    updatedAt: Timestamp;
+    expiresAt: Timestamp; // 7 days from creation
 }

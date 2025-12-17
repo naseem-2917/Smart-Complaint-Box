@@ -18,12 +18,21 @@
 
 ### 👤 User Features
 - **📝 Submit Complaints** - Easy complaint submission with image upload
-- **🤖 AI Auto-Detection** - Real-time AI analysis while typing
+- **🤖 AI Auto-Detection** - Real-time AI analysis while typing (2-second debounce)
+- **🧠 Smart Category & Priority** - AI automatically suggests category and priority
+- **🚫 Gibberish Detection** - AI detects invalid text and warns users
 - **📊 Real-time Tracking** - Track complaint status live
-- **🎯 AI Categorization** - Automatic priority & category scoring
 - **🕵️ Anonymous Submission** - Option to submit anonymously
 - **📜 Complaint History** - View all your past complaints
 - **🔔 Status Notifications** - Get updates on your complaints
+
+### 🆕 Group Complaints (Petition System)
+- **✍️ Create Petitions** - Start a group complaint for common issues
+- **🔗 Share Links** - Share 7-day valid links via WhatsApp and other apps
+- **👥 Collect Signatures** - Other students can sign to support
+- **💥 Dhamaka Badge** - Complaints with 10+ signatures get highlighted
+- **🔒 One Sign Per User** - Each user can only sign once
+- **📈 Progress Tracking** - See how close to Dhamaka status
 
 ### 🔐 Admin Features
 - **📈 Dashboard** - Comprehensive overview of all complaints
@@ -32,12 +41,15 @@
 - **📝 Admin Notes** - Add internal notes to complaints
 - **👤 Assignment** - Assign complaints to team members
 - **🔒 Password Protected** - Secure admin access
+- **📋 Category Management** - Add/edit categories with icon picker (30+ emojis)
+- **💥 Group Complaints View** - See all petitions with expandable supporter lists
 
 ### 🎨 UI/UX Features
-- **🌙 Dark Mode** - Eye-friendly dark theme
+- **🌙 Dark Mode** - Eye-friendly dark theme (system-aware)
 - **📱 Responsive Design** - Works on all devices
 - **✨ Smooth Animations** - Framer Motion powered transitions
 - **🎨 Modern UI** - Clean, glassmorphic design
+- **📦 Collapsible Sections** - Category & Priority in one expandable card
 
 ---
 
@@ -55,6 +67,7 @@
 | Recharts | 3.6 | Analytics Charts |
 | Lucide React | - | Beautiful Icons |
 | date-fns | 4 | Date Formatting |
+| Google Gemini API | - | AI Analysis |
 
 ---
 
@@ -64,6 +77,7 @@
 - Node.js 18+ (recommended: 20+)
 - npm or yarn
 - Firebase account
+- Google AI API key (for Gemini)
 
 ### Installation
 
@@ -92,6 +106,7 @@ VITE_FIREBASE_PROJECT_ID=your_project_id
 VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
 VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 VITE_FIREBASE_APP_ID=your_app_id
+VITE_GEMINI_API_KEY=your_gemini_api_key
 ```
 
 ### Firebase Setup
@@ -111,20 +126,28 @@ Smart-Complaint-Box/
 ├── src/
 │   ├── components/          # Reusable UI components
 │   │   ├── common/          # Buttons, Cards, Inputs, etc.
-│   │   └── layout/          # Header, Footer, Layout
+│   │   └── layout/          # Header, Footer, Sidebar
 │   ├── context/             # React Context providers
 │   │   ├── AuthContext      # Authentication state
 │   │   └── NotificationContext # Toast notifications
 │   ├── pages/               # Page components
 │   │   ├── auth/            # Login, Signup, Profile
 │   │   ├── user/            # Dashboard, Submit, History
+│   │   │   ├── SubmitComplaintPage    # AI-powered submission
+│   │   │   ├── CreateGroupComplaintPage  # Start petitions
+│   │   │   └── SignGroupComplaintPage    # Sign petitions
 │   │   └── admin/           # Admin panel & analytics
+│   │       ├── AdminDashboardPage     # Overview
+│   │       ├── AdminCategoriesPage    # Manage categories
+│   │       └── AdminGroupComplaintsPage # Manage petitions
 │   ├── services/            # Firebase & API services
-│   │   ├── ai.ts            # AI analysis service
+│   │   ├── ai.ts            # AI analysis (Gemini)
 │   │   ├── complaints.ts    # Complaint CRUD operations
+│   │   ├── groupComplaints.ts # Petition system
+│   │   ├── categories.ts    # Category management
 │   │   └── firebase.ts      # Firebase configuration
 │   ├── utils/               # Utility functions
-│   │   └── imageCompressor.ts # Image compression utility
+│   │   └── imageCompressor.ts # Client-side image compression
 │   └── types/               # TypeScript type definitions
 ├── public/                  # Static assets
 └── dist/                    # Production build
@@ -146,14 +169,16 @@ Smart-Complaint-Box/
 
 | Feature | Description |
 |---------|-------------|
-| 🤖 AI Analysis | Auto-categorizes & prioritizes complaints in real-time |
-| 📸 Image Compression | Client-side image compression (800px, 50% quality) |
-| ⏱️ Real-time Updates | Live status updates via Firestore snapshots |
+| 🤖 AI Analysis | Auto-categorizes & prioritizes with gibberish detection |
+| 📸 Image Compression | Client-side compression (800px, 50% quality) |
+| ⏱️ Real-time Updates | Live status updates via Firestore |
+| 💥 Group Complaints | Petition system with Dhamaka highlighting |
 | 📊 Analytics Dashboard | Visual charts with Recharts |
 | 🌙 Dark Mode | System-aware dark/light theme |
 | 📱 Mobile First | Responsive design for all devices |
 | 🔒 Secure | Firebase Auth + Firestore security rules |
 | ✨ Animations | Smooth transitions with Framer Motion |
+| 🎨 Icon Picker | 30+ emoji icons for categories |
 
 ---
 
@@ -164,6 +189,22 @@ Images are compressed client-side before storage:
 - **Format:** JPEG
 - **Quality:** 50%
 - **Storage:** Base64 in Firestore (no Firebase Storage required)
+
+---
+
+## 💥 Group Complaints System
+
+The petition/group complaint system allows students to:
+1. **Create** a complaint with title, description, category, priority
+2. **Share** a unique link (valid for 7 days)
+3. **Collect** signatures from other students
+4. **Achieve Dhamaka** status at 10+ signatures
+
+Admins see:
+- Total petitions and signature counts
+- Filter by All/Dhamaka/Pending/Resolved
+- Expandable supporter list (names & emails)
+- Status management dropdown
 
 ---
 
@@ -217,6 +258,6 @@ MIT License - feel free to use for your projects!
 
 ⭐ **Star this repo if you found it helpful!**
 
-Made with ❤️ using React + TypeScript
+Made with ❤️ using React + TypeScript + Gemini AI
 
 </div>

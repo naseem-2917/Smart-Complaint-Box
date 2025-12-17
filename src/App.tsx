@@ -17,6 +17,8 @@ import ProfilePage from './pages/auth/ProfilePage';
 import DashboardPage from './pages/user/DashboardPage';
 import SubmitComplaintPage from './pages/user/SubmitComplaintPage';
 import ComplaintHistoryPage from './pages/user/ComplaintHistoryPage';
+import CreateGroupComplaintPage from './pages/user/CreateGroupComplaintPage';
+import SignGroupComplaintPage from './pages/user/SignGroupComplaintPage';
 import ComplaintDetailPage from './pages/user/ComplaintDetailPage';
 
 // Admin Pages
@@ -27,8 +29,8 @@ import AnalyticsPage from './pages/admin/AnalyticsPage';
 import AdminCategoriesPage from './pages/admin/AdminCategoriesPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminAIInsightsPage from './pages/admin/AdminAIInsightsPage';
-import AdminNotificationsPage from './pages/admin/AdminNotificationsPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
+import AdminGroupComplaintsPage from './pages/admin/AdminGroupComplaintsPage';
 import AdminLoginRequired from './pages/AdminLoginRequired';
 
 // Auth Required Route - only for pages that need login
@@ -115,6 +117,8 @@ const AppRoutes: React.FC = () => {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="submit" element={<AuthRequiredRoute><SubmitComplaintPage /></AuthRequiredRoute>} />
+        <Route path="group/create" element={<AuthRequiredRoute><CreateGroupComplaintPage /></AuthRequiredRoute>} />
+        <Route path="group/:complaintId" element={<SignGroupComplaintPage />} />
         <Route path="history" element={<AuthRequiredRoute><ComplaintHistoryPage /></AuthRequiredRoute>} />
         <Route path="complaint/:id" element={<AuthRequiredRoute><ComplaintDetailPage /></AuthRequiredRoute>} />
         <Route path="profile" element={<AuthRequiredRoute><ProfilePage /></AuthRequiredRoute>} />
@@ -124,12 +128,12 @@ const AppRoutes: React.FC = () => {
       <Route path="/admin" element={<AdminGate><Layout /></AdminGate>}>
         <Route index element={<AdminDashboardPage />} />
         <Route path="complaints" element={<ComplaintManagementPage />} />
+        <Route path="group-complaints" element={<AdminGroupComplaintsPage />} />
         <Route path="complaint/:id" element={<AdminComplaintDetailPage />} />
         <Route path="categories" element={<AdminCategoriesPage />} />
         <Route path="users" element={<AdminUsersPage />} />
         <Route path="insights" element={<AdminAIInsightsPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
-        <Route path="notifications" element={<AdminNotificationsPage />} />
         <Route path="settings" element={<AdminSettingsPage />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="history" element={<ComplaintHistoryPage />} />

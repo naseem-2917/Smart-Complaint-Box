@@ -10,8 +10,7 @@ import {
     Tags,
     Users,
     Brain,
-    Settings,
-    Bell
+    Settings
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
@@ -34,6 +33,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isAdmin = false }) => {
     const userNavItems = [
         { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/submit', icon: MessageSquare, label: 'New Complaint' },
+        { to: '/group/create', icon: Users, label: 'Group Complaint' },
         { to: '/history', icon: ClipboardList, label: 'My Complaints' },
         { to: '/profile', icon: User, label: 'Profile' }
     ];
@@ -45,11 +45,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isAdmin = false }) => {
     const adminNavItems = [
         { to: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/admin/complaints', icon: ClipboardList, label: 'Complaints' },
+        { to: '/admin/group-complaints', icon: Users, label: 'Group 💥' },
         { to: '/admin/categories', icon: Tags, label: 'Categories' },
         { to: '/admin/users', icon: Users, label: 'Users' },
         { to: '/admin/insights', icon: Brain, label: 'AI Insights' },
         { to: '/admin/analytics', icon: BarChart3, label: 'Reports' },
-        { to: '/admin/notifications', icon: Bell, label: 'Notifications' },
         { to: '/admin/settings', icon: Settings, label: 'Settings' },
         { to: '/admin/profile', icon: User, label: 'Profile' }
     ];

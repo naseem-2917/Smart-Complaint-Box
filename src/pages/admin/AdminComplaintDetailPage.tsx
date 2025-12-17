@@ -8,6 +8,7 @@ import {
 import {
     getComplaint, updateComplaintStatus, assignComplaint, addAdminNote
 } from '../../services/complaints';
+import { getUsersByRole, type UserData } from '../../services/users';
 import { generateEmail } from '../../services/ai';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
@@ -36,9 +37,23 @@ const AdminComplaintDetailPage: React.FC = () => {
     const [newNote, setNewNote] = useState('');
     const [addingNote, setAddingNote] = useState(false);
 
+    // Assignment state
+    const [adminUsers, setAdminUsers] = useState<UserData[]>([]);
+    const [showAssignDropdown, setShowAssignDropdown] = useState(false);
+
     useEffect(() => {
         if (id) loadComplaint();
+        loadAdminUsers();
     }, [id]);
+
+    const loadAdminUsers = async () => {
+        try {
+            const admins = await getUsersByRole('admin');
+            setAdminUsers(admins);
+        } catch (error) {
+            console.error('Failed to load admin users:', error);
+        }
+    };
 
     const loadComplaint = async () => {
         if (!id) return;
@@ -60,12 +75,13 @@ const AdminComplaintDetailPage: React.FC = () => {
         setUpdating(false);
     };
 
-    const handleAssign = async () => {
-        if (!id || !userData || !complaint) return;
+    const handleAssign = async (assigneeName: string) => {
+        if (!id || !userData) return;
         setUpdating(true);
         try {
-            await assignComplaint(id, complaint.suggestedAssignment, userData.displayName || 'Admin');
-            showSuccess('Assigned', `Complaint assigned to ${complaint.suggestedAssignment}`);
+            await assignComplaint(id, assigneeName, userData.displayName || 'Admin');
+            showSuccess('Assigned', `Complaint assigned to ${assigneeName}`);
+            setShowAssignDropdown(false);
             loadComplaint();
         } catch (error) {
             showError('Assignment failed', 'Could not assign complaint');
@@ -281,23 +297,69 @@ const AdminComplaintDetailPage: React.FC = () => {
                         </Card>
 
                         {/* Assignment */}
-                        {!complaint.assignedTo && (
-                            <Card>
-                                <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Assignment</h3>
-                                <p className="text-sm text-gray-500 mb-2">AI Suggestion:</p>
-                                <p className="font-medium text-gray-900 dark:text-white mb-3">{complaint.suggestedAssignment}</p>
-                                <Button fullWidth variant="secondary" loading={updating} onClick={handleAssign}>
-                                    ✓ Assign to Suggested
-                                </Button>
-                            </Card>
-                        )}
+                        <Card>
+                            <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                                <User className="w-4 h-4" /> Assignment
+                            </h3>
 
-                        {complaint.assignedTo && (
-                            <Card>
-                                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Assigned To</h3>
-                                <p className="text-gray-700 dark:text-gray-300">{complaint.assignedTo}</p>
-                            </Card>
-                        )}
+                            {complaint.assignedTo ? (
+                                <div>
+                                    <p className="text-sm text-gray-500 mb-1">Currently assigned to:</p>
+                                    <p className="font-medium text-green-600 dark:text-green-400 mb-3">{complaint.assignedTo}</p>
+                                    <button
+                                        onClick={() => setShowAssignDropdown(!showAssignDropdown)}
+                                        className="text-sm text-primary-500 hover:underline"
+                                    >
+                                        Reassign to someone else
+                                    </button>
+                                </div>
+                            ) : (
+                                <div>
+                                    <p className="text-sm text-gray-500 mb-2">AI Suggestion: <span className="font-medium text-gray-700 dark:text-gray-300">{complaint.suggestedAssignment}</span></p>
+                                    <Button
+                                        fullWidth
+                                        variant="secondary"
+                                        loading={updating}
+                                        onClick={() => handleAssign(complaint.suggestedAssignment)}
+                                        className="mb-2"
+                                    >
+                                        ✓ Assign to Suggested
+                                    </Button>
+                                    <button
+                                        onClick={() => setShowAssignDropdown(!showAssignDropdown)}
+                                        className="text-sm text-primary-500 hover:underline w-full text-center"
+                                    >
+                                        Or select admin manually
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Admin Dropdown */}
+                            {showAssignDropdown && (
+                                <div className="mt-3 border-t border-gray-200 dark:border-gray-700 pt-3">
+                                    <p className="text-sm text-gray-500 mb-2">Select Admin:</p>
+                                    <div className="space-y-1 max-h-40 overflow-y-auto">
+                                        {adminUsers.length > 0 ? (
+                                            adminUsers.map(admin => (
+                                                <button
+                                                    key={admin.id}
+                                                    onClick={() => handleAssign(admin.displayName || admin.email)}
+                                                    disabled={updating}
+                                                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-2"
+                                                >
+                                                    <div className="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-xs font-medium text-primary-600 dark:text-primary-400">
+                                                        {(admin.displayName || admin.email).charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <span className="text-gray-700 dark:text-gray-300">{admin.displayName || admin.email}</span>
+                                                </button>
+                                            ))
+                                        ) : (
+                                            <p className="text-sm text-gray-400 text-center py-2">No admin users found</p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </Card>
 
                         {/* AI Actions */}
                         <Card>
