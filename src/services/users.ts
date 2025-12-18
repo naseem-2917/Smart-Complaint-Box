@@ -133,3 +133,20 @@ export const incrementUserComplaintCount = async (userId: string): Promise<void>
         });
     }
 };
+
+// Update user profile
+export const updateUserProfile = async (
+    userId: string,
+    data: { displayName?: string }
+): Promise<void> => {
+    const updateData: Record<string, unknown> = {
+        updatedAt: serverTimestamp()
+    };
+
+    if (data.displayName !== undefined) {
+        updateData.displayName = data.displayName;
+    }
+
+    await updateDoc(doc(db, USERS_COLLECTION, userId), updateData);
+};
+

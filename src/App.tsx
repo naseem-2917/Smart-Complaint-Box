@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { NotificationProvider } from './context/NotificationContext';
 import ToastContainer from './components/common/ToastContainer';
-import AdminPasswordModal from './components/common/AdminPasswordModal';
 import Layout from './components/layout/Layout';
 import { Loader2 } from 'lucide-react';
+import { isSuperAdmin } from './config/constants';
 
 // Auth Pages
 import LoginPage from './pages/auth/LoginPage';
@@ -32,6 +32,7 @@ import AdminAIInsightsPage from './pages/admin/AdminAIInsightsPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import AdminGroupComplaintsPage from './pages/admin/AdminGroupComplaintsPage';
 import AdminLoginRequired from './pages/AdminLoginRequired';
+import AdminAccessDenied from './pages/AdminAccessDenied';
 
 // Auth Required Route - only for pages that need login
 const AuthRequiredRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -52,20 +53,11 @@ const AuthRequiredRoute: React.FC<{ children: React.ReactNode }> = ({ children }
   return <>{children}</>;
 };
 
-// Admin Gate Component - requires login first, then password
+// Admin Gate Component - requires login and admin role (super admin OR database admin)
 const AdminGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { firebaseUser, loading } = useAuth();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [checking, setChecking] = useState(true);
+  const { firebaseUser, isAdmin, loading } = useAuth();
 
-  useEffect(() => {
-    // Check if already authenticated in this session
-    const authenticated = sessionStorage.getItem('adminAuthenticated') === 'true';
-    setIsAuthenticated(authenticated);
-    setChecking(false);
-  }, []);
-
-  if (loading || checking) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 to-orange-50 dark:from-gray-900 dark:to-gray-800">
         <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
@@ -73,18 +65,22 @@ const AdminGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     );
   }
 
-  // Must be logged in first - show nice login required page
+  // Must be logged in first - show login required page
   if (!firebaseUser) {
     return <AdminLoginRequired />;
   }
 
-  // Then check password
-  if (!isAuthenticated) {
-    return <AdminPasswordModal onSuccess={() => setIsAuthenticated(true)} />;
+  // Check if user is super admin by email OR has admin role in database
+  const isSuperAdminUser = isSuperAdmin(firebaseUser.email);
+  const hasAdminAccess = isSuperAdminUser || isAdmin;
+
+  if (!hasAdminAccess) {
+    return <AdminAccessDenied />;
   }
 
   return <>{children}</>;
 };
+
 
 // Public Route (redirect if logged in - only for login/signup)
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
